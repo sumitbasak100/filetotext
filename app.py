@@ -1,10 +1,12 @@
 from flask import Flask, request, jsonify
-import os  # Added this line
+import os
 import requests
 from bs4 import BeautifulSoup
 from PyPDF2 import PdfReader
 from docx import Document
 from pptx import Presentation
+from PIL import Image
+import pytesseract
 import io
 
 app = Flask(__name__)
@@ -16,7 +18,10 @@ def convert():
 
     url = request.form['url']
 
-    text, error = extract_text_from_url(url)
+    if url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+        text, error = extract_text_from_image(url)
+    else:
+        text, error = extract_text_from_url(url)
 
     if error:
         return jsonify(error=error), 500
@@ -76,6 +81,18 @@ def extract_text_from_webpage(url):
         soup = BeautifulSoup(response.text, 'html.parser')
         # Extract text from all <p> tags
         text = '\n'.join(p.get_text() for p in soup.find_all('p'))
+
+        return text, None
+    except Exception as e:
+        return None, str(e)
+
+def extract_text_from_image(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+
+        image = Image.open(io.BytesIO(response.content))
+        text = pytesseract.image_to_string(image)
 
         return text, None
     except Exception as e:
