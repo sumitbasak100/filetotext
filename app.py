@@ -1,10 +1,6 @@
 from flask import Flask, request, jsonify
-import os
 import requests
-from PyPDF2 import PdfReader
-from docx import Document
-from pptx import Presentation
-import io
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
@@ -16,6 +12,20 @@ def convert():
     url = request.form['url']
 
     text, error = extract_text_from_url(url)
+
+    if error:
+        return jsonify(error=error), 500
+    else:
+        return jsonify(text=text), 200
+
+@app.route('/url-text-extract', methods=['POST'])
+def url_text_extract():
+    if 'url' not in request.form:
+        return jsonify(error="No URL provided"), 400
+
+    url = request.form['url']
+
+    text, error = extract_text_from_webpage(url)
 
     if error:
         return jsonify(error=error), 500
@@ -52,3 +62,19 @@ def extract_text_from_url(url):
         return text, None
     except Exception as e:
         return None, str(e)
+
+def extract_text_from_webpage(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+        # Extract text from all <p> tags
+        text = '\n'.join(p.get_text() for p in soup.find_all('p'))
+
+        return text, None
+    except Exception as e:
+        return None, str(e)
+
+if __name__ == "__main__":
+    app.run(debug=True)
