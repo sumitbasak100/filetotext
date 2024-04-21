@@ -1,6 +1,11 @@
 from flask import Flask, request, jsonify
+import os  # Added this line
 import requests
 from bs4 import BeautifulSoup
+from PyPDF2 import PdfReader
+from docx import Document
+from pptx import Presentation
+import io
 
 app = Flask(__name__)
 
