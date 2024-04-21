@@ -1,6 +1,7 @@
 Flask
+gunicorn
+requests
+beautifulsoup4
 PyPDF2
 python-docx
 python-pptx
-requests
-gunicorn
