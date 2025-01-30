@@ -47,11 +47,12 @@ def url_text_extract():
 def search_sober_living():
     # Get pincode from the query parameters
     pincode = request.args.get('pincode')
+    api_key = request.args.get('api_key')
     if not pincode:
         return jsonify(error="No pincode provided"), 400
 
     # Google Places API URL
-    url = f'https://maps.googleapis.com/maps/api/place/textsearch/json?query=sober+living+homes+in+{pincode}&key=AIzaSyAyKWwY9UbPrt4v-7DOQ9jqvC8V2512CTM'
+    url = f'https://maps.googleapis.com/maps/api/place/textsearch/json?query=sober+living+homes+in+{pincode}&key={api_key}'
 
     try:
         # Make the API request to Google Places
