@@ -59,7 +59,7 @@ def search_sober_living():
         return jsonify(error="No API Key provided"), 400
 
     # Google Places API URL
-    url = f'https://maps.googleapis.com/maps/api/place/textsearch/json?query=sober+living+homes+in+{pincode}&key={api_key}'
+    url = f'https://maps.googleapis.com/maps/api/place/textsearch/json?query=sober+living+in+{pincode}&key={api_key}'
 
     try:
         # Make the API request to Google Places
