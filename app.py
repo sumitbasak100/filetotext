@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # Added for CORS support
 import os
 import requests
 from bs4 import BeautifulSoup
@@ -10,6 +11,9 @@ import pytesseract
 import io
 
 app = Flask(__name__)
+
+# Enable CORS only for the '/search-sober-living' route
+CORS(app, resources={r"/search-sober-living": {"origins": "*"}})
 
 @app.route('/convert', methods=['POST'])
 def convert():
@@ -42,14 +46,17 @@ def url_text_extract():
     else:
         return jsonify(text=text), 200
 
-# New route to search for sober living homes using Google Places API
+# 🔹 New route to search for sober living homes using Google Places API
 @app.route('/search-sober-living', methods=['GET'])
 def search_sober_living():
-    # Get pincode from the query parameters
+    # Get pincode and API key from query parameters
     pincode = request.args.get('pincode')
     api_key = request.args.get('api_key')
+
     if not pincode:
         return jsonify(error="No pincode provided"), 400
+    if not api_key:
+        return jsonify(error="No API Key provided"), 400
 
     # Google Places API URL
     url = f'https://maps.googleapis.com/maps/api/place/textsearch/json?query=sober+living+homes+in+{pincode}&key={api_key}'
@@ -59,11 +66,11 @@ def search_sober_living():
         response = requests.get(url)
         data = response.json()
 
-        if data['status'] == 'OK':
+        if response.status_code == 200 and data.get('status') == 'OK':
             # Return the results from the Google Places API
             return jsonify(results=data['results']), 200
         else:
-            return jsonify(error="Failed to fetch data from Google Places API"), 500
+            return jsonify(error=f"Google API Error: {data.get('status', 'Unknown Error')}"), 500
     except Exception as e:
         return jsonify(error=str(e)), 500
 
