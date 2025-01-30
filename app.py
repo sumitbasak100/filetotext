@@ -42,6 +42,30 @@ def url_text_extract():
     else:
         return jsonify(text=text), 200
 
+# New route to search for sober living homes using Google Places API
+@app.route('/search-sober-living', methods=['GET'])
+def search_sober_living():
+    # Get pincode from the query parameters
+    pincode = request.args.get('pincode')
+    if not pincode:
+        return jsonify(error="No pincode provided"), 400
+
+    # Google Places API URL
+    url = f'https://maps.googleapis.com/maps/api/place/textsearch/json?query=sober+living+homes+in+{pincode}&key=AIzaSyAyKWwY9UbPrt4v-7DOQ9jqvC8V2512CTM'
+
+    try:
+        # Make the API request to Google Places
+        response = requests.get(url)
+        data = response.json()
+
+        if data['status'] == 'OK':
+            # Return the results from the Google Places API
+            return jsonify(results=data['results']), 200
+        else:
+            return jsonify(error="Failed to fetch data from Google Places API"), 500
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+
 def extract_text_from_url(url):
     try:
         response = requests.get(url)
