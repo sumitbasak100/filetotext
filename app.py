@@ -12,8 +12,8 @@ import io
 
 app = Flask(__name__)
 
-# Enable CORS only for the '/search-sober-living' route
-CORS(app, resources={r"/search-sober-living": {"origins": "*"}})
+# Enable CORS only for the relevant routes
+CORS(app, resources={r"/search-sober-living": {"origins": "*"}, r"/search-sober-living/get-details": {"origins": "*"}})
 
 @app.route('/convert', methods=['POST'])
 def convert():
@@ -46,10 +46,8 @@ def url_text_extract():
     else:
         return jsonify(text=text), 200
 
-# 🔹 New route to search for sober living homes using Google Places API
 @app.route('/search-sober-living', methods=['GET'])
 def search_sober_living():
-    # Get query and API key from query parameters
     query = request.args.get('query')
     api_key = request.args.get('api_key')
 
@@ -58,17 +56,35 @@ def search_sober_living():
     if not api_key:
         return jsonify(error="No API Key provided"), 400
 
-    # Google Places API URL
     url = f'https://maps.googleapis.com/maps/api/place/textsearch/json?query={query}&key={api_key}'
-
     try:
-        # Make the API request to Google Places
         response = requests.get(url)
         data = response.json()
-
+        
         if response.status_code == 200 and data.get('status') == 'OK':
-            # Return the results from the Google Places API
             return jsonify(results=data['results']), 200
+        else:
+            return jsonify(error=f"Google API Error: {data.get('status', 'Unknown Error')}"), 500
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+
+@app.route('/search-sober-living/get-details', methods=['GET'])
+def get_place_details():
+    place_id = request.args.get('place_id')
+    api_key = request.args.get('api_key')
+
+    if not place_id:
+        return jsonify(error="No place_id provided"), 400
+    if not api_key:
+        return jsonify(error="No API Key provided"), 400
+
+    url = f'https://maps.googleapis.com/maps/api/place/details/json?place_id={place_id}&key={api_key}'
+    try:
+        response = requests.get(url)
+        data = response.json()
+        
+        if response.status_code == 200 and data.get('status') == 'OK':
+            return jsonify(result=data['result']), 200
         else:
             return jsonify(error=f"Google API Error: {data.get('status', 'Unknown Error')}"), 500
     except Exception as e:
@@ -80,7 +96,7 @@ def extract_text_from_url(url):
         response.raise_for_status()
 
         _, extension = os.path.splitext(url)
-        extension = extension[1:].lower()  # Removes the dot and makes it lowercase
+        extension = extension[1:].lower()
 
         if extension in ['pdf', 'docx', 'txt']:
             if extension == 'pdf':
@@ -111,7 +127,6 @@ def extract_text_from_webpage(url):
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
-        # Extract text from all <p> tags
         text = '\n'.join(p.get_text() for p in soup.find_all('p'))
 
         return text, None
