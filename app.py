@@ -49,17 +49,17 @@ def url_text_extract():
 # 🔹 New route to search for sober living homes using Google Places API
 @app.route('/search-sober-living', methods=['GET'])
 def search_sober_living():
-    # Get pincode and API key from query parameters
-    pincode = request.args.get('pincode')
+    # Get query and API key from query parameters
+    query = request.args.get('query')
     api_key = request.args.get('api_key')
 
-    if not pincode:
-        return jsonify(error="No pincode provided"), 400
+    if not query:
+        return jsonify(error="No query provided"), 400
     if not api_key:
         return jsonify(error="No API Key provided"), 400
 
     # Google Places API URL
-    url = f'https://maps.googleapis.com/maps/api/place/textsearch/json?query=sober+living+in+{pincode}&key={api_key}'
+    url = f'https://maps.googleapis.com/maps/api/place/textsearch/json?query={query}&key={api_key}'
 
     try:
         # Make the API request to Google Places
