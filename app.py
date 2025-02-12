@@ -62,7 +62,7 @@ def search_sober_living():
         data = response.json()
         
         if response.status_code == 200 and data.get('status') == 'OK':
-            return jsonify(results=data['results']), 200
+            return jsonify(data), 200
         else:
             return jsonify(error=f"Google API Error: {data.get('status', 'Unknown Error')}"), 500
     except Exception as e:
