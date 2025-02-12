@@ -90,6 +90,28 @@ def get_place_details():
     except Exception as e:
         return jsonify(error=str(e)), 500
 
+@app.route('/search-sober-living/next-page', methods=['GET'])
+def search_sober_living_next_page():
+    next_page_token = request.args.get('next_page_token')
+    api_key = request.args.get('api_key')
+
+    if not next_page_token:
+        return jsonify(error="No next_page_token provided"), 400
+    if not api_key:
+        return jsonify(error="No API Key provided"), 400
+
+    url = f'https://maps.googleapis.com/maps/api/place/textsearch/json?pagetoken={next_page_token}&key={api_key}'
+    try:
+        response = requests.get(url)
+        data = response.json()
+        
+        if response.status_code == 200 and data.get('status') == 'OK':
+            return jsonify(data), 200
+        else:
+            return jsonify(error=f"Google API Error: {data.get('status', 'Unknown Error')}"), 500
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+
 def extract_text_from_url(url):
     try:
         response = requests.get(url)
