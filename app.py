@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify
 from flask_cors import CORS  # Added for CORS support
 import os
 import requests
@@ -9,8 +9,6 @@ from pptx import Presentation
 from PIL import Image
 import pytesseract
 import io
-import tempfile
-from weasyprint import HTML
 
 app = Flask(__name__)
 
@@ -47,30 +45,6 @@ def url_text_extract():
         return jsonify(error=error), 500
     else:
         return jsonify(text=text), 200
-
-@app.route('/web-to-pdf', methods=['POST'])
-def web_to_pdf():
-    if 'url' not in request.form:
-        return jsonify(error="No URL provided"), 400
-
-    url = request.form['url']
-    
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-            HTML(string=response.text, base_url=url).write_pdf(tmp_file.name)
-            
-            return send_file(
-                tmp_file.name,
-                as_attachment=True,
-                download_name="webpage.pdf",
-                mimetype='application/pdf'
-            )
-            
-    except Exception as e:
-        return jsonify(error=str(e)), 500
 
 @app.route('/search-sober-living', methods=['GET'])
 def search_sober_living():
