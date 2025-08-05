@@ -45,7 +45,6 @@ def url_text_extract():
         return jsonify(error=error), 500
     else:
         return jsonify(text=text), 200
-
 @app.route('/search-sober-living', methods=['GET'])
 def search_sober_living():
     query = request.args.get('query')
@@ -60,7 +59,7 @@ def search_sober_living():
     try:
         response = requests.get(url)
         data = response.json()
-        
+
         if response.status_code == 200 and data.get('status') == 'OK':
             return jsonify(data), 200
         else:
@@ -82,7 +81,7 @@ def get_place_details():
     try:
         response = requests.get(url)
         data = response.json()
-        
+
         if response.status_code == 200 and data.get('status') == 'OK':
             return jsonify(result=data['result']), 200
         else:
@@ -104,7 +103,7 @@ def search_sober_living_next_page():
     try:
         response = requests.get(url)
         data = response.json()
-        
+
         if response.status_code == 200 and data.get('status') == 'OK':
             return jsonify(data), 200
         else:
