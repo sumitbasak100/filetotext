@@ -36,8 +36,8 @@ def convert():
 @app.route("/html-to-pdf", methods=["POST"])
 def html_to_pdf():
     try:
-        data = request.get_json()
-        html_content = data.get("html", "")
+        # Get raw HTML from form body
+        html_content = request.form.get("html")
 
         if not html_content:
             return jsonify(error="No HTML provided"), 400
