@@ -9,6 +9,7 @@ from pptx import Presentation
 from PIL import Image
 import pytesseract
 import io
+from weasyprint import HTML
 
 app = Flask(__name__)
 
@@ -32,6 +33,29 @@ def convert():
     else:
         return jsonify(text=text), 200
 
+@app.route("/html-to-pdf", methods=["POST"])
+def html_to_pdf():
+    try:
+        data = request.get_json()
+        html_content = data.get("html", "")
+
+        if not html_content:
+            return jsonify(error="No HTML provided"), 400
+
+        # Convert HTML string to PDF
+        pdf = HTML(string=html_content).write_pdf()
+
+        # Return as downloadable PDF
+        return Response(
+            pdf,
+            mimetype="application/pdf",
+            headers={
+                "Content-Disposition": "attachment;filename=output.pdf"
+            }
+        )
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+
 @app.route('/url-text-extract', methods=['POST'])
 def url_text_extract():
     if 'url' not in request.form:
@@ -45,6 +69,7 @@ def url_text_extract():
         return jsonify(error=error), 500
     else:
         return jsonify(text=text), 200
+        
 @app.route('/search-sober-living', methods=['GET'])
 def search_sober_living():
     query = request.args.get('query')
