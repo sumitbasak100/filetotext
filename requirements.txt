@@ -8,3 +8,4 @@ python-pptx
 pytesseract
 pillow
 flask-cors
+weasyprint
