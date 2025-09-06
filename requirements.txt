@@ -9,3 +9,4 @@ pytesseract
 pillow
 flask-cors
 weasyprint
+pypandoc
