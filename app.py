@@ -9,10 +9,11 @@ from pptx import Presentation
 from PIL import Image
 import pytesseract
 import io
-from weasyprint import HTML
+from weasyprint import HTML, CSS
 import markdown
 import pypandoc
 from docx.shared import Pt
+from docx.oxml.ns import qn
 
 app = Flask(__name__)
 
