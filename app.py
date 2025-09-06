@@ -36,41 +36,18 @@ def convert():
     else:
         return jsonify(text=text), 200
 
-@app.route("/convert-markdown", methods=["POST"])
-def convert_markdown():
+def preprocess_markdown(md_content):
+    # Ensure each line becomes a paragraph
+    lines = md_content.splitlines()
+    return "\n\n".join([line.strip() for line in lines if line.strip()])
+
+@app.route("/convert-markdown/pdf", methods=["POST"])
+def convert_markdown_pdf():
     try:
         markdown_content = request.form.get("markdown")
         if not markdown_content:
             return jsonify(error="No Markdown provided"), 400
 
-        # PREPROCESS MARKDOWN FOR LINE BREAKS
-        # Ensure single lines become paragraphs in DOCX
-        lines = markdown_content.splitlines()
-        markdown_for_docx = "\n\n".join([line.strip() for line in lines if line.strip()])
-
-        # CONVERT TO DOCX
-        temp_docx = "temp.docx"
-        pypandoc.convert_text(
-            markdown_for_docx,
-            "docx",
-            format="md",
-            outputfile=temp_docx,
-            extra_args=["--standalone"]
-        )
-
-        # Open DOCX to set font
-        doc = Document(temp_docx)
-        for para in doc.paragraphs:
-            for run in para.runs:
-                run.font.name = 'Arial'
-                run.font.size = Pt(12)
-
-        # Save final DOCX bytes
-        docx_io = io.BytesIO()
-        doc.save(docx_io)
-        docx_bytes = docx_io.getvalue()
-
-        # CONVERT TO HTML → PDF
         html_content = markdown.markdown(markdown_content, extensions=["extra"])
         html_with_style = f"""
         <html>
@@ -92,17 +69,52 @@ def convert_markdown():
         """
         pdf_bytes = HTML(string=html_with_style).write_pdf()
 
-        # RETURN JSON WITH RAW BYTES AS LISTS
-        return jsonify({
-            "pdf_data": list(pdf_bytes),
-            "docx_data": list(docx_bytes)
-        }), 200
-
+        return Response(
+            pdf_bytes,
+            mimetype="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=output.pdf"}
+        )
     except Exception as e:
         return jsonify(error=str(e)), 500
 
-if __name__ == "__main__":
-    app.run(debug=True)
+@app.route("/convert-markdown/docx", methods=["POST"])
+def convert_markdown_docx():
+    try:
+        markdown_content = request.form.get("markdown")
+        if not markdown_content:
+            return jsonify(error="No Markdown provided"), 400
+
+        md_for_docx = preprocess_markdown(markdown_content)
+
+        # Convert Markdown → DOCX via pypandoc
+        temp_docx = "temp.docx"
+        pypandoc.convert_text(
+            md_for_docx,
+            "docx",
+            format="md",
+            outputfile=temp_docx,
+            extra_args=["--standalone"]
+        )
+
+        # Set font nicely
+        doc = Document(temp_docx)
+        for para in doc.paragraphs:
+            for run in para.runs:
+                run.font.name = 'Arial'
+                run.font.size = Pt(12)
+
+        docx_io = io.BytesIO()
+        doc.save(docx_io)
+        docx_bytes = docx_io.getvalue()
+
+        return Response(
+            docx_bytes,
+            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": "attachment; filename=output.docx"}
+        )
+
+    except Exception as e:
+        return jsonify(error=str(e)), 500
         
 @app.route('/url-text-extract', methods=['POST'])
 def url_text_extract():
