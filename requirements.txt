@@ -10,3 +10,4 @@ pillow
 flask-cors
 weasyprint
 pypandoc
+markdown
