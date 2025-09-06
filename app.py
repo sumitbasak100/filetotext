@@ -12,7 +12,7 @@ import io
 from weasyprint import HTML
 import markdown
 import pypandoc
- 
+
 app = Flask(__name__)
 
 # Enable CORS only for the relevant routes
@@ -46,10 +46,10 @@ def markdown_convert():
         # Markdown → HTML
         html_content = markdown.markdown(markdown_content)
 
-        # HTML → PDF
-        pdf = HTML(string=html_content).write_pdf()
+        # HTML → PDF (as bytes)
+        pdf_bytes = HTML(string=html_content).write_pdf()
 
-        # Markdown → DOCX
+        # Markdown → DOCX (as bytes)
         output_docx = "output.docx"
         pypandoc.convert_text(
             markdown_content,
@@ -58,15 +58,14 @@ def markdown_convert():
             outputfile=output_docx,
             extra_args=["--standalone"]
         )
-
         with open(output_docx, "rb") as f:
             docx_bytes = f.read()
 
-        import base64
+        # Return raw bytes in JSON (Make.com can accept these in the 'data' field)
         return jsonify({
             "html": html_content,
-            "pdf_base64": base64.b64encode(pdf).decode("utf-8"),
-            "docx_base64": base64.b64encode(docx_bytes).decode("utf-8")
+            "pdf_data": list(pdf_bytes),    # send as array of bytes
+            "docx_data": list(docx_bytes)
         }), 200
 
     except Exception as e:
@@ -85,7 +84,7 @@ def url_text_extract():
         return jsonify(error=error), 500
     else:
         return jsonify(text=text), 200
-        
+
 @app.route('/search-sober-living', methods=['GET'])
 def search_sober_living():
     query = request.args.get('query')
