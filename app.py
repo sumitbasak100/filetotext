@@ -12,7 +12,7 @@ import io
 from weasyprint import HTML
 import markdown
 import pypandoc
-
+ 
 app = Flask(__name__)
 
 # Enable CORS only for the relevant routes
