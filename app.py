@@ -36,10 +36,21 @@ def convert():
     else:
         return jsonify(text=text), 200
 
-def preprocess_markdown(md_content):
-    # Ensure each line becomes a paragraph
-    lines = md_content.splitlines()
-    return "\n\n".join([line.strip() for line in lines if line.strip()])
+def set_docx_font(doc, font_name="Arial", font_size=12):
+    for para in doc.paragraphs:
+        for run in para.runs:
+            run.font.name = font_name
+            run._element.rPr.rFonts.set(qn('w:eastAsia'), font_name)
+            run.font.size = Pt(font_size)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    for run in para.runs:
+                        run.font.name = font_name
+                        run._element.rPr.rFonts.set(qn('w:eastAsia'), font_name)
+                        run.font.size = Pt(font_size)
+    return doc
 
 @app.route("/convert-markdown/pdf", methods=["POST"])
 def convert_markdown_pdf():
@@ -48,35 +59,33 @@ def convert_markdown_pdf():
         if not markdown_content:
             return jsonify(error="No Markdown provided"), 400
 
-        html_content = markdown.markdown(markdown_content, extensions=["extra"])
-        html_with_style = f"""
-        <html>
-        <head>
-            <style>
-                body {{
-                    font-family: Arial, Helvetica, sans-serif;
-                    font-size: 12pt;
-                    line-height: 1.5;
-                    margin: 20px;
-                }}
-                p {{ margin: 0 0 10px 0; }}
-            </style>
-        </head>
-        <body>
-            {html_content}
-        </body>
-        </html>
+        # Convert Markdown → HTML with proper line breaks and tables
+        html_content = markdown.markdown(
+            markdown_content,
+            extensions=['tables', 'extra', 'sane_lists', 'nl2br']
+        )
+
+        # Add some CSS for proper spacing and font
+        css = """
+        body { font-family: Arial, sans-serif; line-height: 1.5; }
+        p { margin: 0 0 10px; }
+        ul, ol { margin: 0 0 10px 20px; }
+        li { margin-bottom: 5px; }
+        table { border-collapse: collapse; margin-bottom: 10px; }
+        th, td { border: 1px solid #333; padding: 5px; }
         """
-        pdf_bytes = HTML(string=html_with_style).write_pdf()
+
+        pdf_bytes = HTML(string=html_content).write_pdf(stylesheets=[CSS(string=css)])
 
         return Response(
             pdf_bytes,
             mimetype="application/pdf",
             headers={"Content-Disposition": "attachment; filename=output.pdf"}
         )
+
     except Exception as e:
         return jsonify(error=str(e)), 500
-
+        
 @app.route("/convert-markdown/docx", methods=["POST"])
 def convert_markdown_docx():
     try:
@@ -84,24 +93,18 @@ def convert_markdown_docx():
         if not markdown_content:
             return jsonify(error="No Markdown provided"), 400
 
-        md_for_docx = preprocess_markdown(markdown_content)
-
-        # Convert Markdown → DOCX via pypandoc
+        # Convert Markdown → DOCX using Pandoc
         temp_docx = "temp.docx"
         pypandoc.convert_text(
-            md_for_docx,
+            markdown_content,
             "docx",
             format="md",
             outputfile=temp_docx,
-            extra_args=["--standalone"]
+            extra_args=["--standalone", "--from=markdown+pipe_tables+autolink_bare_uris"]
         )
 
-        # Set font nicely
         doc = Document(temp_docx)
-        for para in doc.paragraphs:
-            for run in para.runs:
-                run.font.name = 'Arial'
-                run.font.size = Pt(12)
+        doc = set_docx_font(doc, font_name="Arial", font_size=12)
 
         docx_io = io.BytesIO()
         doc.save(docx_io)
