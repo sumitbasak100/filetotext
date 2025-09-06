@@ -37,21 +37,10 @@ def convert():
     else:
         return jsonify(text=text), 200
 
-def set_docx_font(doc, font_name="Arial", font_size=12):
-    for para in doc.paragraphs:
-        for run in para.runs:
-            run.font.name = font_name
-            run._element.rPr.rFonts.set(qn('w:eastAsia'), font_name)
-            run.font.size = Pt(font_size)
-    for table in doc.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                for para in cell.paragraphs:
-                    for run in para.runs:
-                        run.font.name = font_name
-                        run._element.rPr.rFonts.set(qn('w:eastAsia'), font_name)
-                        run.font.size = Pt(font_size)
-    return doc
+def preprocess_markdown(md_content):
+    # Ensure each line becomes a paragraph
+    lines = md_content.splitlines()
+    return "\n\n".join([line.strip() for line in lines if line.strip()])
 
 @app.route("/convert-markdown/pdf", methods=["POST"])
 def convert_markdown_pdf():
@@ -94,18 +83,22 @@ def convert_markdown_docx():
         if not markdown_content:
             return jsonify(error="No Markdown provided"), 400
 
-        # Convert Markdown → DOCX using Pandoc
+        md_for_docx = preprocess_markdown(markdown_content)
+
         temp_docx = "temp.docx"
         pypandoc.convert_text(
-            markdown_content,
+            md_for_docx,
             "docx",
             format="md",
             outputfile=temp_docx,
-            extra_args=["--standalone", "--from=markdown+pipe_tables+autolink_bare_uris"]
+            extra_args=["--standalone", "--from=markdown+pipe_tables"]
         )
 
         doc = Document(temp_docx)
-        doc = set_docx_font(doc, font_name="Arial", font_size=12)
+        for para in doc.paragraphs:
+            for run in para.runs:
+                run.font.name = 'Arial'
+                run.font.size = Pt(12)
 
         docx_io = io.BytesIO()
         doc.save(docx_io)
