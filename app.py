@@ -35,21 +35,34 @@ def convert():
     else:
         return jsonify(text=text), 200
 
-@app.route("/markdown-convert", methods=["POST"])
-def markdown_convert():
+@app.route("/markdown-to-pdf", methods=["POST"])
+def markdown_to_pdf():
     try:
         markdown_content = request.form.get("markdown")
-
         if not markdown_content:
             return jsonify(error="No Markdown provided"), 400
 
-        # Markdown → HTML
+        # Markdown → HTML → PDF
         html_content = markdown.markdown(markdown_content)
-
-        # HTML → PDF (as bytes)
         pdf_bytes = HTML(string=html_content).write_pdf()
 
-        # Markdown → DOCX (as bytes)
+        # Return raw bytes (PDF)
+        return Response(
+            pdf_bytes,
+            mimetype="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=output.pdf"}
+        )
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+
+@app.route("/markdown-to-docx", methods=["POST"])
+def markdown_to_docx():
+    try:
+        markdown_content = request.form.get("markdown")
+        if not markdown_content:
+            return jsonify(error="No Markdown provided"), 400
+
+        # Markdown → DOCX using pypandoc
         output_docx = "output.docx"
         pypandoc.convert_text(
             markdown_content,
@@ -58,19 +71,19 @@ def markdown_convert():
             outputfile=output_docx,
             extra_args=["--standalone"]
         )
+
         with open(output_docx, "rb") as f:
             docx_bytes = f.read()
 
-        # Return raw bytes in JSON (Make.com can accept these in the 'data' field)
-        return jsonify({
-            "html": html_content,
-            "pdf_data": list(pdf_bytes),    # send as array of bytes
-            "docx_data": list(docx_bytes)
-        }), 200
-
+        # Return raw bytes (DOCX)
+        return Response(
+            docx_bytes,
+            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": "attachment; filename=output.docx"}
+        )
     except Exception as e:
         return jsonify(error=str(e)), 500
-
+        
 @app.route('/url-text-extract', methods=['POST'])
 def url_text_extract():
     if 'url' not in request.form:
