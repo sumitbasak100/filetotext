@@ -12,6 +12,7 @@ import io
 from weasyprint import HTML
 import markdown
 import pypandoc
+from docx.shared import Pt
 
 app = Flask(__name__)
 
@@ -35,54 +36,73 @@ def convert():
     else:
         return jsonify(text=text), 200
 
-@app.route("/markdown-to-pdf", methods=["POST"])
-def markdown_to_pdf():
+@app.route("/convert-markdown", methods=["POST"])
+def convert_markdown():
     try:
         markdown_content = request.form.get("markdown")
         if not markdown_content:
             return jsonify(error="No Markdown provided"), 400
 
-        # Markdown → HTML → PDF
-        html_content = markdown.markdown(markdown_content)
-        pdf_bytes = HTML(string=html_content).write_pdf()
+        # PREPROCESS MARKDOWN FOR LINE BREAKS
+        # Ensure single lines become paragraphs in DOCX
+        lines = markdown_content.splitlines()
+        markdown_for_docx = "\n\n".join([line.strip() for line in lines if line.strip()])
 
-        # Return raw bytes (PDF)
-        return Response(
-            pdf_bytes,
-            mimetype="application/pdf",
-            headers={"Content-Disposition": "attachment; filename=output.pdf"}
-        )
-    except Exception as e:
-        return jsonify(error=str(e)), 500
-
-@app.route("/markdown-to-docx", methods=["POST"])
-def markdown_to_docx():
-    try:
-        markdown_content = request.form.get("markdown")
-        if not markdown_content:
-            return jsonify(error="No Markdown provided"), 400
-
-        # Markdown → DOCX using pypandoc
-        output_docx = "output.docx"
+        # CONVERT TO DOCX
+        temp_docx = "temp.docx"
         pypandoc.convert_text(
-            markdown_content,
+            markdown_for_docx,
             "docx",
             format="md",
-            outputfile=output_docx,
+            outputfile=temp_docx,
             extra_args=["--standalone"]
         )
 
-        with open(output_docx, "rb") as f:
-            docx_bytes = f.read()
+        # Open DOCX to set font
+        doc = Document(temp_docx)
+        for para in doc.paragraphs:
+            for run in para.runs:
+                run.font.name = 'Arial'
+                run.font.size = Pt(12)
 
-        # Return raw bytes (DOCX)
-        return Response(
-            docx_bytes,
-            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            headers={"Content-Disposition": "attachment; filename=output.docx"}
-        )
+        # Save final DOCX bytes
+        docx_io = io.BytesIO()
+        doc.save(docx_io)
+        docx_bytes = docx_io.getvalue()
+
+        # CONVERT TO HTML → PDF
+        html_content = markdown.markdown(markdown_content, extensions=["extra"])
+        html_with_style = f"""
+        <html>
+        <head>
+            <style>
+                body {{
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 12pt;
+                    line-height: 1.5;
+                    margin: 20px;
+                }}
+                p {{ margin: 0 0 10px 0; }}
+            </style>
+        </head>
+        <body>
+            {html_content}
+        </body>
+        </html>
+        """
+        pdf_bytes = HTML(string=html_with_style).write_pdf()
+
+        # RETURN JSON WITH RAW BYTES AS LISTS
+        return jsonify({
+            "pdf_data": list(pdf_bytes),
+            "docx_data": list(docx_bytes)
+        }), 200
+
     except Exception as e:
         return jsonify(error=str(e)), 500
+
+if __name__ == "__main__":
+    app.run(debug=True)
         
 @app.route('/url-text-extract', methods=['POST'])
 def url_text_extract():
