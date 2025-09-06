@@ -10,6 +10,8 @@ from PIL import Image
 import pytesseract
 import io
 from weasyprint import HTML
+import markdown
+import pypandoc
 
 app = Flask(__name__)
 
@@ -33,26 +35,40 @@ def convert():
     else:
         return jsonify(text=text), 200
 
-@app.route("/html-to-pdf", methods=["POST"])
-def html_to_pdf():
+@app.route("/markdown-convert", methods=["POST"])
+def markdown_convert():
     try:
-        # Get raw HTML from form body
-        html_content = request.form.get("html")
+        markdown_content = request.form.get("markdown")
 
-        if not html_content:
-            return jsonify(error="No HTML provided"), 400
+        if not markdown_content:
+            return jsonify(error="No Markdown provided"), 400
 
-        # Convert HTML string to PDF
+        # Markdown → HTML
+        html_content = markdown.markdown(markdown_content)
+
+        # HTML → PDF
         pdf = HTML(string=html_content).write_pdf()
 
-        # Return as downloadable PDF
-        return Response(
-            pdf,
-            mimetype="application/pdf",
-            headers={
-                "Content-Disposition": "attachment;filename=output.pdf"
-            }
+        # Markdown → DOCX
+        output_docx = "output.docx"
+        pypandoc.convert_text(
+            markdown_content,
+            "docx",
+            format="md",
+            outputfile=output_docx,
+            extra_args=["--standalone"]
         )
+
+        with open(output_docx, "rb") as f:
+            docx_bytes = f.read()
+
+        import base64
+        return jsonify({
+            "html": html_content,
+            "pdf_base64": base64.b64encode(pdf).decode("utf-8"),
+            "docx_base64": base64.b64encode(docx_bytes).decode("utf-8")
+        }), 200
+
     except Exception as e:
         return jsonify(error=str(e)), 500
 
