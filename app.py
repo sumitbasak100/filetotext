@@ -14,11 +14,29 @@ import markdown
 import pypandoc
 from docx.shared import Pt
 from docx.oxml.ns import qn
+import base64
 
 app = Flask(__name__)
 
 # Enable CORS only for the relevant routes
 CORS(app, resources={r"/search-sober-living": {"origins": "*"}, r"/search-sober-living/get-details": {"origins": "*"}})
+
+@app.route("/image-to-base64", methods=["POST"])
+def image_to_base64():
+    try:
+        url = request.form.get("url")
+        if not url:
+            return jsonify(error="No URL provided"), 400
+
+        response = requests.get(url)
+        response.raise_for_status()
+
+        image_base64 = base64.b64encode(response.content).decode("utf-8")
+
+        return jsonify(base64=image_base64), 200
+
+    except Exception as e:
+        return jsonify(error=str(e)), 500
 
 @app.route('/convert', methods=['POST'])
 def convert():
