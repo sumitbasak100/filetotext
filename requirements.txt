@@ -11,3 +11,4 @@ flask-cors
 weasyprint
 pypandoc
 markdown
+base64
