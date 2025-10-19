@@ -31,7 +31,7 @@ def format_html():
 
     # Parse and prettify HTML
     soup = BeautifulSoup(html_code, "html.parser")
-    formatted_html = soup.prettify
+    formatted_html = soup.prettify()
 
     return jsonify({"formatted_html": formatted_html})
     
