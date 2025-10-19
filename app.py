@@ -15,7 +15,6 @@ import pypandoc
 from docx.shared import Pt
 from docx.oxml.ns import qn
 import base64
-import jsbeautifier
 
 app = Flask(__name__)
 
@@ -32,7 +31,7 @@ def format_html():
 
     # Parse and prettify HTML
     soup = BeautifulSoup(html_code, "html.parser")
-    formatted_html = soup.prettify(indent_width=2)
+    formatted_html = soup.prettify
 
     return jsonify({"formatted_html": formatted_html})
     
