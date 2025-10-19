@@ -15,12 +15,21 @@ import pypandoc
 from docx.shared import Pt
 from docx.oxml.ns import qn
 import base64
+import jsbeautifier
 
 app = Flask(__name__)
 
 # Enable CORS only for the relevant routes
 CORS(app, resources={r"/search-sober-living": {"origins": "*"}, r"/search-sober-living/get-details": {"origins": "*"}})
 
+@app.route('/format', methods=['POST'])
+def format_html():
+    html = request.form.get('html') or ''
+    options = jsbeautifier.default_options()
+    options.indent_size = 2
+    formatted = jsbeautifier.beautify(html, options)
+    return formatted
+    
 @app.route("/image-to-base64", methods=["POST"])
 def image_to_base64():
     try:
