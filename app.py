@@ -24,7 +24,7 @@ CORS(app, resources={r"/search-sober-living": {"origins": "*"}, r"/search-sober-
 
 @app.route('/format-html', methods=['POST'])
 def format_html():
-    html_code = request.json.get("html", "")
+    html_code = request.form.get("html", "")
     
     opts = jsbeautifier.default_options()
     opts.indent_size = 2
