@@ -22,13 +22,15 @@ app = Flask(__name__)
 # Enable CORS only for the relevant routes
 CORS(app, resources={r"/search-sober-living": {"origins": "*"}, r"/search-sober-living/get-details": {"origins": "*"}})
 
-@app.route('/format', methods=['POST'])
+@app.route('/format-html', methods=['POST'])
 def format_html():
-    html = request.form.get('html') or ''
-    options = jsbeautifier.default_options()
-    options.indent_size = 2
-    formatted = jsbeautifier.beautify(html, options)
-    return formatted
+    html_code = request.json.get("html", "")
+    
+    opts = jsbeautifier.default_options()
+    opts.indent_size = 2
+    formatted_html = jsbeautifier.beautify(html_code, opts)
+
+    return jsonify({"html": formatted_html})
     
 @app.route("/image-to-base64", methods=["POST"])
 def image_to_base64():
