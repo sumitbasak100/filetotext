@@ -24,13 +24,17 @@ CORS(app, resources={r"/search-sober-living": {"origins": "*"}, r"/search-sober-
 
 @app.route('/format-html', methods=['POST'])
 def format_html():
+    # Get HTML from form-data
     html_code = request.form.get("html", "")
-    
-    opts = jsbeautifier.default_options()
-    opts.indent_size = 2
-    formatted_html = jsbeautifier.beautify(html_code, opts)
 
-    return jsonify({"html": formatted_html})
+    if not html_code:
+        return jsonify({"error": "No HTML provided"}), 400
+
+    # Parse and prettify HTML
+    soup = BeautifulSoup(html_code, "html.parser")
+    formatted_html = soup.prettify(indent_width=2)
+
+    return jsonify({"formatted_html": formatted_html})
     
 @app.route("/image-to-base64", methods=["POST"])
 def image_to_base64():
