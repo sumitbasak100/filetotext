@@ -9,6 +9,7 @@ from pptx import Presentation
 from PIL import Image
 import pytesseract
 import io
+from io import BytesIO
 from weasyprint import HTML, CSS
 import markdown
 import pypandoc
@@ -20,6 +21,26 @@ app = Flask(__name__)
 
 # Enable CORS only for the relevant routes
 CORS(app, resources={r"/search-sober-living": {"origins": "*"}, r"/search-sober-living/get-details": {"origins": "*"}})
+
+@app.route('/convert', methods=['POST'])
+def convert_image_to_svg():
+    url = request.form.get("image_url")
+    if not url: return {"error": "Missing image_url"}, 400
+
+    try:
+        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        r.raise_for_status()
+    except: return {"error": "Could not fetch image"}, 400
+
+    img = Image.open(BytesIO(r.content))
+    w, h = img.size
+    b64 = base64.b64encode(r.content).decode('utf-8')
+    mime = r.headers.get("Content-Type", "image/png")
+
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">
+  <image href="data:{mime};base64,{b64}" width="{w}" height="{h}" x="0" y="0"/>
+</svg>"""
+    return Response(svg, mimetype="image/svg+xml")
 
 @app.route('/format-html', methods=['POST'])
 def format_html():
