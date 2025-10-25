@@ -22,10 +22,10 @@ app = Flask(__name__)
 # Enable CORS only for the relevant routes
 CORS(app, resources={r"/search-sober-living": {"origins": "*"}, r"/search-sober-living/get-details": {"origins": "*"}})
 
-@app.route('/convert', methods=['POST'])
+@app.route('/image-to-svg', methods=['POST'])
 def convert_image_to_svg():
-    url = request.form.get("image_url")
-    if not url: return {"error": "Missing image_url"}, 400
+    url = request.form.get("image")
+    if not url: return {"error": "Missing image"}, 400
 
     try:
         r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
