@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, send_file
 from flask_cors import CORS  # Added for CORS support
 import os
 import requests
@@ -16,11 +16,43 @@ import pypandoc
 from docx.shared import Pt
 from docx.oxml.ns import qn
 import base64
+import zipfile
 
 app = Flask(__name__)
 
 # Enable CORS only for the relevant routes
 CORS(app, resources={r"/search-sober-living": {"origins": "*"}, r"/search-sober-living/get-details": {"origins": "*"}})
+
+@app.route('/generate-files', methods=['POST'])
+def generate_files():
+    try:
+        data = request.get_json()
+
+        if not isinstance(data, list):
+            return jsonify({"error": "JSON must be an array"}), 400
+
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for item in data:
+                name = item.get("name")
+                content = item.get("content")
+
+                if not name or content is None:
+                    return jsonify({"error": "Each item requires 'name' and 'content'"}), 400
+
+                zip_file.writestr(name, content)
+
+        zip_buffer.seek(0)
+
+        return send_file(
+            zip_buffer,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name='files.zip'
+        )
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/image-to-svg', methods=['POST'])
 def convert_image_to_svg():
@@ -35,7 +67,7 @@ def convert_image_to_svg():
     img = Image.open(BytesIO(r.content))
     w, h = img.size
     b64 = base64.b64encode(r.content).decode('utf-8')
-    mime = r.headers.get("Content-Type", "image/png")
+    mime = r.headers.get("Content-Type") or "image/png"
 
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">
   <image href="data:{mime};base64,{b64}" width="{w}" height="{h}" x="0" y="0"/>
