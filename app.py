@@ -23,6 +23,49 @@ app = Flask(__name__)
 # Enable CORS only for the relevant routes
 CORS(app, resources={r"/search-sober-living": {"origins": "*"}, r"/search-sober-living/get-details": {"origins": "*"}})
 
+@app.route("/export-bolt-pages", methods=["POST"])
+def export_bolt_pages():
+    d = request.get_json(force=True)
+
+    pages = d.get("page_ids", [])
+    fmt = d.get("format", "png")
+    version = d.get("version", "")
+    width = "400" if d.get("app_type") == "Mobile App" else "1400"
+    api_fmt = fmt if fmt != "svg" else "png"
+
+    if not pages:
+        return jsonify(error="page_ids required"), 400
+
+    zip_io = BytesIO()
+    with zipfile.ZipFile(zip_io, "w") as z:
+        for p in pages:
+            url = f"https://bolt-ai.bubbleapps.io/version-{version}/api/1.1/wf/render_html?page={p}"
+            r = requests.get(
+                "https://api.apiflash.com/v1/urltoimage",
+                params={
+                    "access_key": "d9752c0348d04346b28b816b4f936805",
+                    "url": url,
+                    "format": api_fmt,
+                    "width": width,
+                    "fresh": "true",
+                    "full_page": "true",
+                },
+            )
+
+            if fmt == "svg":
+                b64 = base64.b64encode(r.content).decode()
+                z.writestr(f"{p}.svg",
+                    f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}">'
+                    f'<image href="data:image/png;base64,{b64}" width="100%"/>'
+                    f'</svg>'
+                )
+            else:
+                z.writestr(f"{p}.{api_fmt}", r.content)
+
+    zip_io.seek(0)
+    return send_file(zip_io, as_attachment=True, download_name="bolt_pages.zip")
+
+
 @app.route('/generate-files', methods=['POST'])
 def generate_files():
     try:
