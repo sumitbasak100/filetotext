@@ -38,12 +38,12 @@ def export_bolt_pages():
 
     zip_io = BytesIO()
     with zipfile.ZipFile(zip_io, "w") as z:
-        for p in pages:
+        for i, p in enumerate(pages, start=1):
             url = f"https://bolt-ai.bubbleapps.io/version-{version}/api/1.1/wf/render_html?page={p}"
             r = requests.get(
                 "https://api.apiflash.com/v1/urltoimage",
                 params={
-                    "access_key": "d9752c0348d04346b28b816b4f936805",
+                    "access_key": "b017efb026a6490582055752d1012ee2",
                     "url": url,
                     "format": api_fmt,
                     "width": width,
@@ -52,19 +52,21 @@ def export_bolt_pages():
                 },
             )
 
+            name = f"page-{i}"
+
             if fmt == "svg":
                 b64 = base64.b64encode(r.content).decode()
-                z.writestr(f"{p}.svg",
+                z.writestr(
+                    f"{name}.svg",
                     f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}">'
                     f'<image href="data:image/png;base64,{b64}" width="100%"/>'
                     f'</svg>'
                 )
             else:
-                z.writestr(f"{p}.{api_fmt}", r.content)
+                z.writestr(f"{name}.{api_fmt}", r.content)
 
     zip_io.seek(0)
     return send_file(zip_io, as_attachment=True, download_name="bolt_pages.zip")
-
 
 @app.route('/generate-files', methods=['POST'])
 def generate_files():
