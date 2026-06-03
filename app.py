@@ -17,8 +17,7 @@ from docx.shared import Pt
 from docx.oxml.ns import qn
 import base64
 import zipfile
-import re
-import numpy as np
+from AIDetector import detect_ai_probability
 
 nltk.download("punkt")
 
@@ -384,86 +383,36 @@ def extract_text_from_image(url):
     except Exception as e:
         return None, str(e)
 
-AI_PHRASES = [
-    "in conclusion",
-    "furthermore",
-    "moreover",
-    "it is important to note",
-    "overall",
-    "ultimately",
-    "to summarize",
-    "in summary",
-    "to conclude",
-    "when it comes to",
-    "of course",
-    "certainly",
-    "seamlessly",
-    "tailored",
-    "comprehensive",
-    "pivotal",
-    "intricate"
-]
+@app.route("/ai-detect", methods=["POST"])
+def ai_detect():
 
-def detect_ai_probability(text):
+    data = request.get_json()
 
-    text = text.lower()
+    text = data.get("text", "").strip()
 
-    words = re.findall(r"\b[a-z]+\b", text)
-    sentences = re.split(r"[.!?]+", text)
+    if len(text) < 100:
+        return jsonify({
+            "error": "Please provide at least 100 characters."
+        }), 400
 
-    sentences = [s.strip() for s in sentences if s.strip()]
+    probability = detect_ai_probability(text)
 
-    if len(words) < 30:
-        return 0.5
+    if probability >= 0.75:
+        verdict = "Almost certainly AI-generated"
+    elif probability >= 0.60:
+        verdict = "Likely AI-generated"
+    elif probability >= 0.40:
+        verdict = "Mixed signals"
+    elif probability >= 0.25:
+        verdict = "Likely human-written"
+    else:
+        verdict = "Almost certainly human-written"
 
-    score = 0.0
-
-    # Vocabulary diversity
-    unique_ratio = len(set(words)) / len(words)
-
-    if unique_ratio < 0.45:
-        score += 0.30
-    elif unique_ratio < 0.55:
-        score += 0.20
-
-    # Sentence length consistency
-    lengths = [len(s.split()) for s in sentences]
-
-    if len(lengths) > 1:
-        std = np.std(lengths)
-
-        if std < 4:
-            score += 0.25
-        elif std < 8:
-            score += 0.15
-
-    # AI phrase detection
-    phrase_matches = 0
-
-    for phrase in AI_PHRASES:
-        if phrase in text:
-            phrase_matches += 1
-
-    if phrase_matches >= 3:
-        score += 0.35
-    elif phrase_matches >= 1:
-        score += 0.20
-
-    # Repetition check
-    word_counts = {}
-
-    for word in words:
-        word_counts[word] = word_counts.get(word, 0) + 1
-
-    repeated_words = sum(
-        1 for count in word_counts.values()
-        if count >= 4
-    )
-
-    if repeated_words > len(words) * 0.02:
-        score += 0.10
-
-    return round(min(score, 1.0), 3)
+    return jsonify({
+        "ai_probability": probability,
+        "human_probability": round(1 - probability, 3),
+        "verdict": verdict
+    })
     
 if __name__ == "__main__":
     app.run(debug=True)
