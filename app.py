@@ -19,10 +19,6 @@ import base64
 import zipfile
 from AIDetector import detect_ai_probability
 
-nltk.download("punkt")
-
-from nltk.tokenize import sent_tokenize, word_tokenize
-
 app = Flask(__name__)
 
 # Enable CORS only for the relevant routes
