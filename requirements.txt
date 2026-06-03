@@ -13,5 +13,3 @@ pypandoc
 markdown
 jsbeautifier
 numpy
-scipy
-nltk
