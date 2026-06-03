@@ -17,6 +17,14 @@ from docx.shared import Pt
 from docx.oxml.ns import qn
 import base64
 import zipfile
+import numpy as np
+from collections import Counter
+from scipy.stats import entropy
+import nltk
+
+nltk.download("punkt")
+
+from nltk.tokenize import sent_tokenize, word_tokenize
 
 app = Flask(__name__)
 
@@ -377,6 +385,118 @@ def extract_text_from_image(url):
         return text, None
     except Exception as e:
         return None, str(e)
+
+AI_PHRASES = [
+    "in conclusion",
+    "furthermore",
+    "moreover",
+    "it is important to note",
+    "overall",
+    "ultimately",
+    "to summarize",
+    "in summary",
+    "to conclude",
+    "when it comes to",
+    "of course",
+    "certainly",
+    "seamlessly",
+    "tailored",
+    "comprehensive",
+    "pivotal",
+    "intricate"
+]
+
+def detect_ai_probability(text):
+    try:
+        sentences = sent_tokenize(text)
+
+        if len(sentences) < 2:
+            return 0.5
+
+        lengths = [len(word_tokenize(s)) for s in sentences]
+
+        mean_len = np.mean(lengths)
+        std_len = np.std(lengths)
+
+        burstiness = std_len / mean_len if mean_len else 0
+
+        words = [
+            w.lower()
+            for w in word_tokenize(text)
+            if w.isalpha()
+        ]
+
+        unique_ratio = len(set(words)) / max(len(words), 1)
+
+        bins = [0, 5, 10, 20, 35, 999]
+        bucketed = np.digitize(lengths, bins)
+
+        counts = Counter(bucketed)
+
+        probs = np.array(list(counts.values()), dtype=float)
+        probs /= probs.sum()
+
+        ent = entropy(probs, base=2)
+
+        lower = text.lower()
+
+        phrase_matches = sum(
+            1 for phrase in AI_PHRASES
+            if phrase in lower
+        )
+
+        phrase_density = phrase_matches / max(len(words), 1)
+
+        score = 0
+
+        if burstiness < 0.25:
+            score += 0.30
+
+        if unique_ratio < 0.50:
+            score += 0.25
+
+        if ent < 1.5:
+            score += 0.25
+
+        if phrase_density > 0.01:
+            score += 0.20
+
+        return round(min(score, 1), 3)
+
+    except:
+        return 0.5
+
+
+@app.route("/ai-detect", methods=["POST"])
+def ai_detect():
+
+    data = request.get_json()
+
+    text = data.get("text", "").strip()
+
+    if len(text) < 100:
+        return jsonify({
+            "error": "Please provide at least 100 characters."
+        }), 400
+
+    probability = detect_ai_probability(text)
+
+    if probability >= 0.75:
+        verdict = "Almost certainly AI-generated"
+    elif probability >= 0.60:
+        verdict = "Likely AI-generated"
+    elif probability >= 0.40:
+        verdict = "Mixed signals"
+    elif probability >= 0.25:
+        verdict = "Likely human-written"
+    else:
+        verdict = "Almost certainly human-written"
+
+    return jsonify({
+        "ai_probability": probability,
+        "human_probability": round(1 - probability, 3),
+        "verdict": verdict
+    })
 
 if __name__ == "__main__":
     app.run(debug=True)
